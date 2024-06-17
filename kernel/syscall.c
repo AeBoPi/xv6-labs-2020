@@ -176,6 +176,7 @@ syscall(void)
     // 如果当前进程设置了对该编号系统调用的 trace，则打出 pid、系统调用名称和返回值。
     if((p->syscall_trace >> num) & 1) {
       // p->syscall_trace 是一个位掩码，用于跟踪进程 p 的系统调用
+      // 当当前进程的位掩码的第num位为1时，表示前进程设置了对该编号系统调用的
       printf("%d: syscall %s -> %d\n",p->pid, syscall_names[num], p->trapframe->a0); // syscall_names[num]: 从 syscall 编号到 syscall 名的映射表
     }
   } else {

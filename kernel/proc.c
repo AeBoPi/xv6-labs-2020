@@ -706,7 +706,7 @@ count_process(void) {
   {
     // acquire(&p->lock);
     // 不需要锁进程 proc 结构，因为我们只需要读取进程列表，不需要写
-    if (p->state != UNUSED) { //不是 UNUSED 的进程位，就是已经分配的
+    if (p->state != UNUSED) { // 不是 UNUSED 的进程位，就是已经分配的
         cnt++;
     }
   }
