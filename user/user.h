@@ -1,5 +1,7 @@
+// 在用户态的头文件定义，使得用户态程序可以找到跳板入口函数
 struct stat;
 struct rtcdate;
+struct sysinfo; // 这里要声明一下 sysinfo 结构，供用户态使用。
 
 // system calls
 int fork(void);
@@ -23,7 +25,8 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int trace(int);     // here
+int trace(int);  // here trace函数声明， 函数入参为一个数字，可以控制跟踪哪些system call
+int sysinfo(struct sysinfo *);  // here
 
 // ulib.c
 int stat(const char*, struct stat*);

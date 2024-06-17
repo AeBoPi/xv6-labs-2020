@@ -104,9 +104,14 @@ extern uint64 sys_unlink(void);
 extern uint64 sys_wait(void);
 extern uint64 sys_write(void);
 extern uint64 sys_uptime(void);
-extern uint64 sys_trace(void);  // here
+extern uint64 sys_trace(void);  // here   用 extern 全局声明新的内核调用函数
+extern uint64 sys_sysinfo(void);  // here
 
-static uint64 (*syscalls[])(void) = {
+// 函数指针数组，通过寄存器a7的值定位到某个函数指针，通过函数指针调用函数(usys.pl)
+// sycallls -- 数组名，(*syscalls[]) 表示数组的每个元素都是指向函数的指针 
+// (void) 表示这些函数不接受任何参数
+// [SYS_trace] sys_trace 是 C 语言数组的一个语法，表示以方括号内的值作为元素下标
+static uint64 (*syscalls[])(void) = {  
 [SYS_fork]    sys_fork,
 [SYS_exit]    sys_exit,
 [SYS_wait]    sys_wait,
@@ -129,6 +134,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_trace]   sys_trace,    // here
+[SYS_sysinfo] sys_sysinfo,    // here
 };
 
 const char *syscall_names[] = {
@@ -154,6 +160,7 @@ const char *syscall_names[] = {
 [SYS_mkdir]   "mkdir",
 [SYS_close]   "close",
 [SYS_trace]   "trace",
+[SYS_sysinfo]   "sysinfo",
 };
 
 
@@ -163,11 +170,12 @@ syscall(void)
   int num;
   struct proc *p = myproc();
 
-  num = p->trapframe->a7;
+  num = p->trapframe->a7;   // 系统调用id
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) { // 如果系统调用编号有效
     p->trapframe->a0 = syscalls[num]();  // 通过系统调用编号，获取系统调用处理函数的指针，调用并将返回值存到用户进程的 a0 寄存器中
     // 如果当前进程设置了对该编号系统调用的 trace，则打出 pid、系统调用名称和返回值。
     if((p->syscall_trace >> num) & 1) {
+      // p->syscall_trace 是一个位掩码，用于跟踪进程 p 的系统调用
       printf("%d: syscall %s -> %d\n",p->pid, syscall_names[num], p->trapframe->a0); // syscall_names[num]: 从 syscall 编号到 syscall 名的映射表
     }
   } else {
