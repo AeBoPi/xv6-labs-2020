@@ -1,5 +1,5 @@
 整个 lab3 的目的：探索页表，修改页表以简化从用户态拷贝数据到内核态的方法。
-实验1：执行make grade
+实验1：执行make grade，或者编译后执行 ./grade-lab-pgtbl pte printout
 实验2：Makefile添加 usertests，make qemu 之后执行 usertests；
 实验3：执行 make grade
 # 实验2 A kernel pate table per process
