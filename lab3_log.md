@@ -1,4 +1,7 @@
 整个 lab3 的目的：探索页表，修改页表以简化从用户态拷贝数据到内核态的方法。
+实验1：执行make grade
+实验2：Makefile添加 usertests，make qemu 之后执行 usertests；
+实验3：执行 make grade
 # 实验2 A kernel pate table per process
 >
 xv6 原本的设计是，用户进程在用户态使用各自的用户态页表，但是一旦进入内核态（例如使用了系统调用），则切换到内核页表（通过修改 satp 寄存器，trampoline.S）。然而这个内核页表是全局共享的，也就是全部进程进入内核态都共用同一个内核态页表：
