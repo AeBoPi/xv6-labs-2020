@@ -180,7 +180,13 @@ uint64          walkaddr(pagetable_t, uint64);
 int             copyout(pagetable_t, uint64, char *, uint64);
 int             copyin(pagetable_t, char *, uint64, uint64);
 int             copyinstr(pagetable_t, char *, uint64, uint64);
-void             vmprint(pagetable_t); // 添加函数声明
+void            vmprint(pagetable_t); // 添加函数声明
+int             kvmcopymappings(pagetable_t src, pagetable_t dst, uint64 start, uint64 sz); //added
+uint64          kvmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz);      // lab3.3 added
+
+// vmcopyin.c
+int             copyin_new(pagetable_t, char *, uint64, uint64);     // lab3.3 added
+int             copyinstr_new(pagetable_t, char *, uint64, uint64);  // lab3.3 added
 
 // plic.c
 void            plicinit(void);
