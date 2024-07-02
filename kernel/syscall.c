@@ -104,6 +104,8 @@ extern uint64 sys_unlink(void);
 extern uint64 sys_wait(void);
 extern uint64 sys_write(void);
 extern uint64 sys_uptime(void);
+extern uint64 sys_sigalarm(void);     // new add 以允许 alarmtest 调用 sigalarm 和 sigreturn 系统调用
+extern uint64 sys_sigreturn(void);    // 同上
 
 static uint64 (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -127,6 +129,8 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_sigalarm]   sys_sigalarm,    // new add 以允许 alarmtest 调用 sigalarm 和 sigreturn 系统调用
+[SYS_sigreturn]   sys_sigreturn,  // 同上
 };
 
 void

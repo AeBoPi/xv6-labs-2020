@@ -36,3 +36,5 @@ entry("getpid");
 entry("sbrk");
 entry("sleep");
 entry("uptime");
+entry("sigalarm");      # new add 以允许 alarmtest 调用 sigalarm 和 sigreturn 系统调用
+entry("sigreturn");     # 同上
