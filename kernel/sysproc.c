@@ -43,12 +43,20 @@ sys_sbrk(void)
 {
   int addr;
   int n;
+  struct proc *p = myproc();  // new add
 
   if(argint(0, &n) < 0)
     return -1;
-  addr = myproc()->sz;
-  if(growproc(n) < 0)
-    return -1;
+  // addr = myproc()->sz;
+  addr = p->sz;   // new add
+  // if(growproc(n) < 0)
+  //   return -1;
+
+  if(n < 0) {
+    uvmdealloc(p->pagetable, p->sz, p->sz+n); // 如果是缩小空间，则马上释放
+  }
+  p->sz += n; // 懒分配
+  
   return addr;
 }
 

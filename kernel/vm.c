@@ -5,6 +5,9 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "proc.h"
+
 
 /*
  * the kernel's page table.
@@ -170,6 +173,7 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 // Remove npages of mappings starting from va. va must be
 // page-aligned. The mappings must exist.
 // Optionally free the physical memory.
+// 修改这个解决了 proc_freepagetable 时的 panic
 void
 uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 {
@@ -181,9 +185,11 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 
   for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
     if((pte = walk(pagetable, a, 0)) == 0)
-      panic("uvmunmap: walk");
+      // panic("uvmunmap: walk");
+      continue; //如果页表项不存在，跳过当前地址 （原本是直接panic）
     if((*pte & PTE_V) == 0)
-      panic("uvmunmap: not mapped");
+      // panic("uvmunmap: not mapped");
+      continue;   //如果页表项不存在，跳过当前地址 （原本是直接panic）
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     if(do_free){
@@ -305,6 +311,7 @@ uvmfree(pagetable_t pagetable, uint64 sz)
 // physical memory.
 // returns 0 on success, -1 on failure.
 // frees any allocated pages on failure.
+// 修改这个解决了 fork 时的 panic
 int
 uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 {
@@ -315,9 +322,11 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
-      panic("uvmcopy: pte should exist");
+      // panic("uvmcopy: pte should exist");
+      continue; //如果一个页不存在，则认为是懒加载的页，忽略即可
     if((*pte & PTE_V) == 0)
-      panic("uvmcopy: page not present");
+      // panic("uvmcopy: page not present");
+      continue; // 如果一个页不存在，则认为是懒加载的页，忽略即可
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
@@ -351,10 +360,14 @@ uvmclear(pagetable_t pagetable, uint64 va)
 // Copy from kernel to user.
 // Copy len bytes from src to virtual address dstva in a given page table.
 // Return 0 on success, -1 on error.
+// 修改这个解决了 read/write 时的错误 (usertests 中的 sbrkarg 失败的问题)
 int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
+
+  if(uvmshouldtouch(dstva))
+   uvmlazytouch(dstva);
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
@@ -380,6 +393,9 @@ int
 copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 {
   uint64 n, va0, pa0;
+
+  if(uvmshouldtouch(srcva))
+    uvmlazytouch(srcva);
 
   while(len > 0){
     va0 = PGROUNDDOWN(srcva);
@@ -439,4 +455,36 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+
+// new add
+// uvmlazytouch 函数负责分配实际的物理内存并建立映射。懒分配的内存页在被 touch 后就可以被使用了
+// touch a lazy-allocated page so it's mapped to an actual physical page.
+void uvmlazytouch(uint64 va) {
+  struct proc *p = myproc();
+  char *mem = kalloc();
+  if(mem == 0) {
+    // failed to allocate physical memory
+    printf("lazy alloc: out of memory\n");
+    p->killed = 1;
+  } else {
+    memset(mem, 0, PGSIZE);
+    if(mappages(p->pagetable, PGROUNDDOWN(va), PGSIZE, (uint64)mem, PTE_W|PTE_X|PTE_R|PTE_U) != 0){
+      printf("lazy alloc: failed to map page\n");
+      kfree(mem);
+      p->killed = 1;
+    }
+  }
+  // printf("lazy alloc: %p, p->sz: %p\n", PGROUNDDOWN(va), p->sz);
+}
+
+// whether a page is previously lazy-allocated and needed to be touched before use.
+int uvmshouldtouch(uint64 va) {
+  pte_t *pte;
+  struct proc *p = myproc();
+  
+  return va < p->sz // within size of memory for the process
+    && PGROUNDDOWN(va) != r_sp() // not accessing stack guard page (it shouldn't be mapped)
+    && (((pte = walk(p->pagetable, va, 0))==0) || ((*pte & PTE_V)==0)); // page table entry does not exist
 }
