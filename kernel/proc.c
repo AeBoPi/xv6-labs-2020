@@ -454,9 +454,9 @@ wait(uint64 addr)
 //  - eventually that process transfers control
 //    via swtch back to the scheduler.
 void
-scheduler(void)
-{
-  struct proc *p;
+scheduler(void)     //scheduler运行了一个简单的循环：找到一个可以运行进程，运行它，直到它让出CPU，一直重复。
+{                   // 调度器在进程表上循环寻找一个可运行的进程，即p->state == RUNNABLE的进程。
+  struct proc *p; // 一旦找到这样的进程，它就会设置CPU当前进程变量c->proc指向该进程，将该进程标记为RUNNING，然后调用swtch开始运行它
   struct cpu *c = mycpu();
   
   c->proc = 0;
@@ -514,7 +514,7 @@ sched(void)
     panic("sched interruptible");
 
   intena = mycpu()->intena;
-  swtch(&p->context, &mycpu()->context);
+  swtch(&p->context, &mycpu()->context);  //调用swtch将当前上下文保存在p->context中，并切换到之前保存在cpu->scheduler中的调度器上下文
   mycpu()->intena = intena;
 }
 
@@ -530,9 +530,9 @@ yield(void)
 }
 
 // A fork child's very first scheduling by scheduler()
-// will swtch to forkret.
+// will swtch to forkret.  当一个新进程第一次被调度时，它从forkret开始
 void
-forkret(void)
+forkret(void)   //forkret的存在是为了释放p->lock；否则，新进程需要从usertrapret开始
 {
   static int first = 1;
 

@@ -8,6 +8,8 @@
 #define NBUCKET 5
 #define NKEYS 100000
 
+pthread_mutex_t lock[NBUCKET];
+
 struct entry {
   int key;
   int value;
@@ -25,7 +27,7 @@ now()
  return tv.tv_sec + tv.tv_usec / 1000000.0;
 }
 
-static void 
+static void     // 将新的条目插入到哈希表中
 insert(int key, int value, struct entry **p, struct entry *n)
 {
   struct entry *e = malloc(sizeof(struct entry));
@@ -35,10 +37,12 @@ insert(int key, int value, struct entry **p, struct entry *n)
   *p = e;
 }
 
-static 
+static        // 将键值对插入哈希表
 void put(int key, int value)
 {
   int i = key % NBUCKET;
+
+  pthread_mutex_lock(&lock[i]);
 
   // is the key already present?
   struct entry *e = 0;
@@ -53,24 +57,28 @@ void put(int key, int value)
     // the new is new.
     insert(key, value, &table[i], table[i]);
   }
+  pthread_mutex_unlock(&lock[i]);
 }
 
-static struct entry*
+static struct entry*      // 从哈希表中查找键并返回对应的条目
 get(int key)
 {
   int i = key % NBUCKET;
 
+  pthread_mutex_lock(&lock[i]);
 
   struct entry *e = 0;
   for (e = table[i]; e != 0; e = e->next) {
     if (e->key == key) break;
   }
 
+  pthread_mutex_unlock(&lock[i]);
+
   return e;
 }
 
 static void *
-put_thread(void *xa)
+put_thread(void *xa)     // 将键值对插入哈希表，键根据线程数进行分区，即每个线程负责各插入一部分键值
 {
   int n = (int) (long) xa; // thread number
   int b = NKEYS/nthread;
@@ -83,7 +91,7 @@ put_thread(void *xa)
 }
 
 static void *
-get_thread(void *xa)
+get_thread(void *xa)      // 从哈希表中查找键，并记录找不到键的次数
 {
   int n = (int) (long) xa; // thread number
   int missing = 0;
@@ -102,6 +110,10 @@ main(int argc, char *argv[])
   pthread_t *tha;
   void *value;
   double t1, t0;
+
+  for (int i = 0; i < NBUCKET; i++) {
+    pthread_mutex_init(&lock[i], NULL);
+  }
 
   if (argc < 2) {
     fprintf(stderr, "Usage: %s nthreads\n", argv[0]);

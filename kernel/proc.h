@@ -1,5 +1,5 @@
 // Saved registers for kernel context switches.
-struct context {
+struct context {    // 上下文结构体
   uint64 ra;
   uint64 sp;
 
@@ -19,9 +19,9 @@ struct context {
 };
 
 // Per-CPU state.
-struct cpu {
+struct cpu {                  // CPU 的结构体，里面有包含上下文结构体
   struct proc *proc;          // The process running on this cpu, or null.
-  struct context context;     // swtch() here to enter scheduler().
+  struct context context;     // swtch() here to enter scheduler(). 
   int noff;                   // Depth of push_off() nesting.
   int intena;                 // Were interrupts enabled before push_off()?
 };
@@ -83,7 +83,7 @@ struct trapframe {
 enum procstate { UNUSED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
-struct proc {
+struct proc {                  // 线程的结构体，里面有包含上下文结构体
   struct spinlock lock;
 
   // p->lock must be held when using these:

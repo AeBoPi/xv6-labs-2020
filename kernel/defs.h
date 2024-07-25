@@ -106,7 +106,7 @@ int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
 
 // swtch.S
-void            swtch(struct context*, struct context*);
+void            swtch(struct context*, struct context*);       //它将当前的寄存器保存在old中，从new中加载寄存器，然后返回
 
 // spinlock.c
 void            acquire(struct spinlock*);
