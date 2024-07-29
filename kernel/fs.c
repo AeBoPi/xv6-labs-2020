@@ -375,23 +375,46 @@ iunlockput(struct inode *ip)
 // Return the disk block address of the nth block in inode ip.
 // If there is no such block, bmap allocates one.
 static uint
-bmap(struct inode *ip, uint bn)
+bmap(struct inode *ip, uint bn)   // 将文件的逻辑块号映射到磁盘块号
 {
   uint addr, *a;
   struct buf *bp;
 
-  if(bn < NDIRECT){
+  if(bn < NDIRECT){   
     if((addr = ip->addrs[bn]) == 0)
       ip->addrs[bn] = addr = balloc(ip->dev);
     return addr;
   }
   bn -= NDIRECT;
 
-  if(bn < NINDIRECT){
+  if(bn < NINDIRECT){   // singly-indirect          如果 bn 在单重间接块的范围内
     // Load indirect block, allocating if necessary.
-    if((addr = ip->addrs[NDIRECT]) == 0)
-      ip->addrs[NDIRECT] = addr = balloc(ip->dev);
-    bp = bread(ip->dev, addr);
+    if((addr = ip->addrs[NDIRECT]) == 0)      
+      ip->addrs[NDIRECT] = addr = balloc(ip->dev);       // 如果没有分配单重间接块的地址，则分配一个新块，并将其地址存储在 ip->addrs[NDIRECT]
+    bp = bread(ip->dev, addr);        // 然后读取这个单重间接块，并在其中寻找 bn 对应的地址。如果这个地址未分配，则分配新块并记录下来
+    a = (uint*)bp->data;
+    if((addr = a[bn]) == 0){
+      a[bn] = addr = balloc(ip->dev);
+      log_write(bp);
+    }
+    brelse(bp);
+    return addr;
+  }
+  bn -= NINDIRECT;
+
+  if(bn < NINDIRECT * NINDIRECT) { // doubly-indirect     如果 bn 在双重间接块的范围内  
+    // Load indirect block, allocating if necessary.
+    if((addr = ip->addrs[NDIRECT+1]) == 0)      // 如果没有分配双重间接块的地址，则分配一个新块，并将其地址存储在 ip->addrs[NDIRECT+1]
+      ip->addrs[NDIRECT+1] = addr = balloc(ip->dev);
+    bp = bread(ip->dev, addr);    // 读取双重间接块，并在其中寻找一级间接块的地址。如果这个地址未分配，则分配新块并记录下来
+    a = (uint*)bp->data;
+    if((addr = a[bn/NINDIRECT]) == 0){
+      a[bn/NINDIRECT] = addr = balloc(ip->dev);
+      log_write(bp);
+    }
+    brelse(bp);
+    bn %= NINDIRECT;
+    bp = bread(ip->dev, addr);    // 读取一级间接块，并在其中寻找 bn 对应的地址。如果这个地址未分配，则分配新块并记录下来
     a = (uint*)bp->data;
     if((addr = a[bn]) == 0){
       a[bn] = addr = balloc(ip->dev);
@@ -407,7 +430,7 @@ bmap(struct inode *ip, uint bn)
 // Truncate inode (discard contents).
 // Caller must hold ip->lock.
 void
-itrunc(struct inode *ip)
+itrunc(struct inode *ip)    //  释放文件的块，将inode的大小重置为零
 {
   int i, j;
   struct buf *bp;
@@ -430,6 +453,26 @@ itrunc(struct inode *ip)
     brelse(bp);
     bfree(ip->dev, ip->addrs[NDIRECT]);
     ip->addrs[NDIRECT] = 0;
+  }
+
+  if(ip->addrs[NDIRECT+1]){
+    bp = bread(ip->dev, ip->addrs[NDIRECT+1]);
+    a = (uint*)bp->data;
+    for(j = 0; j < NINDIRECT; j++){
+      if(a[j]) {
+        struct buf *bp2 = bread(ip->dev, a[j]);
+        uint *a2 = (uint*)bp2->data;
+        for(int k = 0; k < NINDIRECT; k++){
+          if(a2[k])
+            bfree(ip->dev, a2[k]);
+        }
+        brelse(bp2);
+        bfree(ip->dev, a[j]);
+      }
+    }
+    brelse(bp);
+    bfree(ip->dev, ip->addrs[NDIRECT+1]);
+    ip->addrs[NDIRECT + 1] = 0;
   }
 
   ip->size = 0;
