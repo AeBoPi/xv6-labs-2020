@@ -303,7 +303,7 @@ sys_open(void)
       end_op();
       return -1;
     }
-  } else {
+  } else {    // 修改 sys_open，使其在遇到符号链接的时候，可以递归跟随符号链接，直到跟随到非符号链接的 inode 为止
     // if((ip = namei(path)) == 0){
     //   end_op();
     //   return -1;
