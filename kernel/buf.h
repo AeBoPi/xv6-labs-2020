@@ -1,4 +1,4 @@
-struct buf {
+struct buf {   
   int valid;   // has data been read from disk?
   int disk;    // does disk "own" buf?
   uint dev;
@@ -6,6 +6,7 @@ struct buf {
   struct sleeplock lock;
   uint refcnt;
   struct buf *prev; // LRU cache list
+  uint lastuse; // *newly added, used to keep track of the least-recently-used buf
   struct buf *next;
   uchar data[BSIZE];
 };

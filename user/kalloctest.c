@@ -22,12 +22,12 @@ main(int argc, char *argv[])
   exit(0);
 }
 
-int ntas(int print)
+int ntas(int print)   // 获取系统的统计信息，并从中提取出某个特定的统计值
 {
   int n;
   char *c;
 
-  if (statistics(buf, SZ) <= 0) {
+  if (statistics(buf, SZ) <= 0) {   // statistics读取系统统计信息并存储在 buf 中
     fprintf(2, "ntas: no stats\n");
   }
   c = strchr(buf, '=');
@@ -37,7 +37,9 @@ int ntas(int print)
   return n;
 }
 
-void test1(void)
+/*test1 函数创建 NCHILD 子进程，每个子进程循环 N 次进行 sbrk 分配和释放内存。通过 ntas 函数前后测量页表条目数量变化，判断是否有显著变化*/
+
+void test1(void)    // 进行内存分配和释放测试，并检查页表条目数量变化
 {
   void *a, *a1;
   int n, m;
@@ -77,8 +79,10 @@ void test1(void)
 //
 // countfree() from usertests.c
 //
+/*countfree 函数连续分配内存页，直到分配失败，并记录成功分配的页数，然后释放所有分配的内存*/
+
 int
-countfree()
+countfree()     // 统计系统中可用的物理页数
 {
   uint64 sz0 = (uint64)sbrk(0);
   int n = 0;
@@ -96,7 +100,9 @@ countfree()
   return n;
 }
 
-void test2() {
+/*test2 函数首先统计系统的空闲页数 free0，然后重复 50 次调用 countfree 并比较每次结果。如果发现内存页数发生变化，则表示有内存泄漏*/
+
+void test2() {                // 重复调用 countfree，检查内存分配和释放的一致性
   int free0 = countfree();
   int free1;
   int n = (PHYSTOP-KERNBASE)/PGSIZE;
