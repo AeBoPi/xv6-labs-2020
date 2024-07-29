@@ -515,24 +515,24 @@ sys_symlink(void)
 {
   struct inode *ip;
   char target[MAXPATH], path[MAXPATH];
-  if(argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0)
+  if(argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0)  // 从用户空间获取两个参数：目标路径和符号链接路径
     return -1;
 
   begin_op();
 
-  ip = create(path, T_SYMLINK, 0, 0);
+  ip = create(path, T_SYMLINK, 0, 0);   // 创建一个新的符号链接 inode
   if(ip == 0){
     end_op();
     return -1;
   }
 
   // use the first data block to store target path.
-  if(writei(ip, 0, (uint64)target, 0, strlen(target)) < 0) {
+  if(writei(ip, 0, (uint64)target, 0, strlen(target)) < 0) {    // 将目标路径写入符号链接文件的第一个数据块
     end_op();
     return -1;
   }
 
-  iunlockput(ip);
+  iunlockput(ip);   // 解锁并放弃 inode
 
   end_op();
   return 0;
