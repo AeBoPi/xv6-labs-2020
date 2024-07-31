@@ -44,7 +44,7 @@ findslot(struct spinlock *lk) {
 #endif
 
 void
-initlock(struct spinlock *lk, char *name)
+initlock(struct spinlock *lk, char *name)   
 {
   lk->name = name;
   lk->locked = 0;
@@ -70,10 +70,11 @@ acquire(struct spinlock *lk)
 #endif      
 
   // On RISC-V, sync_lock_test_and_set turns into an atomic swap:
-  //   a5 = 1
-  //   s1 = &lk->locked
-  //   amoswap.w.aq a5, a5, (s1)
-  while(__sync_lock_test_and_set(&lk->locked, 1) != 0) {
+  //   a5 = 1   这行代码将寄存器a5设置为1。a5寄存器是用来存储要交换的新值
+  //   s1 = &lk->locked  这行代码将寄存器s1设置为lk->locked的地址。s1寄存器用来存储锁变量的地址
+  //   amoswap.w.aq a5, a5, (s1)    // 这条指令将s1寄存器指向的内存地址（即lk->locked）的值与a5寄存器的值进行交换，并将原来的值存储在a5中
+  // 其中.w表示操作是32位的，.aq表示需要获取（acquire）语义，确保后续的内存操作不会在此指令之前执行
+  while(__sync_lock_test_and_set(&lk->locked, 1) != 0) {  // spinlock 是一种忙等待锁，特征：线程在获取锁的过程中一直占用CPU进行检查，而不是阻塞等待
 #ifdef LAB_LOCK
     __sync_fetch_and_add(&(lk->nts), 1);
 #else
@@ -106,7 +107,7 @@ release(struct spinlock *lk)
   // and that loads in the critical section occur strictly before
   // the lock is released.
   // On RISC-V, this emits a fence instruction.
-  __sync_synchronize();
+  __sync_synchronize();   // __sync_synchronize() 是一个 GCC 提供的内建函数，用于实现全局内存屏障（memory barrier）。内存屏障确保在它之前的所有读写操作在它之后的读写操作之前完成
 
   // Release the lock, equivalent to lk->locked = 0.
   // This code doesn't use a C assignment, since the C standard
@@ -114,7 +115,7 @@ release(struct spinlock *lk)
   // multiple store instructions.
   // On RISC-V, sync_lock_release turns into an atomic swap:
   //   s1 = &lk->locked
-  //   amoswap.w zero, zero, (s1)
+  //   amoswap.w zero, zero, (s1)   这条指令将s1寄存器指向的内存地址（即lk->locked）的值与zero寄存器的值进行交换，并将原来的值存储在zero中。zero寄存器总是返回0
   __sync_lock_release(&lk->locked);
 
   pop_off();

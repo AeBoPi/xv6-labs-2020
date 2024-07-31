@@ -19,25 +19,25 @@ initsleeplock(struct sleeplock *lk, char *name)
 }
 
 void
-acquiresleep(struct sleeplock *lk)
+acquiresleep(struct sleeplock *lk)    // sleeplock 是一种无忙等待锁，包含了一个自旋锁struct spinlock lk来保护睡眠锁本身的状态，但是它的主要机制是让线程在无法获取锁时进入睡眠状态，而不是忙等待，从而节省CPU资源
 {
-  acquire(&lk->lk);
-  while (lk->locked) {
+  acquire(&lk->lk);   // 获取保护睡眠锁的自旋锁
+  while (lk->locked) {  // 如果锁被持有，进程进入睡眠状态
     sleep(lk, &lk->lk);
   }
-  lk->locked = 1;
+  lk->locked = 1; // 成功获取睡眠锁
   lk->pid = myproc()->pid;
-  release(&lk->lk);
+  release(&lk->lk); // 释放保护睡眠锁的自旋锁
 }
 
 void
 releasesleep(struct sleeplock *lk)
 {
-  acquire(&lk->lk);
+  acquire(&lk->lk); // 获取保护睡眠锁的自旋锁
   lk->locked = 0;
   lk->pid = 0;
-  wakeup(lk);
-  release(&lk->lk);
+  wakeup(lk); // 唤醒等待获取睡眠锁的进程
+  release(&lk->lk);   // 释放保护睡眠锁的自旋锁
 }
 
 int
